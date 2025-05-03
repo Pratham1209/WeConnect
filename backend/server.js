@@ -1,81 +1,78 @@
-
-// const express = require('express');
-// const mongoose = require('mongoose');
-// const cors = require('cors');
-// require('dotenv').config(); // ✅ Load env vars
-
-// const authRoutes = require('./routes/authRoutes');
-// const helpRequestRoutes = require('./routes/helpRequestRoutes');  // Import help request route
-
-// const app = express();
-
-// // ✅ Middleware
-// app.use(cors());
-// app.use(express.json());
-
-// // ✅ Routes
-// app.use('/api/auth', authRoutes);
-// app.use('/api/help', helpRequestRoutes);  // Handle help requests
-
-// // ✅ Connect to MongoDB
-// mongoose.connect(process.env.MONGO_URI)
-//   .then(() => {
-//     console.log('✅ Connected to MongoDB');
-//     app.listen(5000, () => {
-//       console.log('🚀 Server is running on port 5000');
-//     });
-//   })
-//   .catch((err) => {
-//     console.error('❌ Error connecting to MongoDB:', err);
-//   });
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
-const http = require('http'); // ⬅️ Add this
-const { Server } = require('socket.io'); // ⬅️ Add this
+const http = require('http');
+const { Server } = require('socket.io');
 
 const authRoutes = require('./routes/authRoutes');
-const helpRequestRoutes = require('./routes/helpRequestRoutes');
+const HelpRequest = require('./models/HelpRequest'); // ✅ Correct import
 
 const app = express();
-const server = http.createServer(app); // ⬅️ Wrap your app in a server
+const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // Make sure to adjust in production
-    methods: ["GET", "POST"]
-  }
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
 });
 
-// ✅ Middleware
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// ✅ Routes
+// Routes
 app.use('/api/auth', authRoutes);
-
-// Pass the socket.io instance to the route
 const helpRequestRoutesWithSocket = require('./routes/helpRequestRoutes')(io);
 app.use('/api/help', helpRequestRoutesWithSocket);
 
-// ✅ Socket connection
+// Socket connection (Optional real-time updates)
 io.on('connection', (socket) => {
   console.log('🟢 A client connected:', socket.id);
 
-  socket.on('disconnect', () => {
-    console.log('🔴 A client disconnected:', socket.id);
+  // If you want to keep the socket way of handling actions:
+  socket.on('helpRequestAction', async (data, callback) => {
+    const { requestId, action, volunteerId, volunteerName } = data;
+    console.log(`⚡ Volunteer action:`, data);
+
+    try {
+      const helpRequest = await HelpRequest.findById(requestId);
+      if (!helpRequest) {
+        return callback({ success: false, error: 'Help request not found' });
+      }
+
+      if (helpRequest.status !== 'pending') {
+        return callback({ success: false, error: `Request already ${helpRequest.status}` });
+      }
+
+      if (action === 'accept') {
+        helpRequest.status = 'accepted';
+        helpRequest.acceptedBy = volunteerName || 'Unknown';
+        helpRequest.acceptedById = volunteerId || null;
+      } else if (action === 'pending') {
+        helpRequest.status = 'pending';
+      } else {
+        console.log("AAA", action);
+        return callback({ success: false, error: 'Invalid action' });
+      }
+
+      await helpRequest.save();
+      io.emit('updateHelpRequestStatus', helpRequest);
+      callback({ success: true });
+    } catch (err) {
+      console.error(err);
+      callback({ success: false, error: 'Error processing the request' });
+    }
   });
 });
 
-// ✅ Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => {
-    console.log('✅ Connected to MongoDB');
-    server.listen(5000, () => { // ⬅️ server.listen instead of app.listen
-      console.log('🚀 Server is running on port 5000');
+    console.log('Connected to MongoDB');
+    server.listen(process.env.PORT || 5000, () => {
+      console.log('Server running on port 5000');
     });
   })
-  .catch((err) => {
-    console.error('❌ Error connecting to MongoDB:', err);
-  });
+  .catch((err) => console.error('MongoDB connection error:', err));

@@ -1,9 +1,16 @@
 const mongoose = require('mongoose');
 
-const helpRequestSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  description: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now },
-});
+const HelpRequestSchema = new mongoose.Schema({
+  name: String,
+  email: String,
+  description: String,
+  status: {
+    type: String,
+    enum: ['pending', 'accepted', 'rejected'],
+    default: 'pending',
+  },
+  acceptedBy: String,
+  acceptedById: String,
+}, { timestamps: true });
 
-module.exports = mongoose.model('HelpRequest', helpRequestSchema);
+module.exports = mongoose.model('HelpRequest', HelpRequestSchema);
