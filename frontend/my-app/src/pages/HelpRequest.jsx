@@ -7,13 +7,16 @@ function HelpRequest() {
     email: '',
     description: '',
   });
+  const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     const loggedInUser = JSON.parse(localStorage.getItem('user'));
     if (loggedInUser) {
       setFormData({
-        name: loggedInUser.name,
-        email: loggedInUser.email,
+        name: loggedInUser.name || '',
+        email: loggedInUser.email || '',
         description: '',
       });
     }
@@ -21,6 +24,15 @@ function HelpRequest() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    if (!formData.description.trim()) {
+      setErrorMessage('Please enter a valid description.');
+      return;
+    }
+
+    setLoading(true);
     console.log('Sending help request:', formData);
 
     try {
@@ -32,14 +44,16 @@ function HelpRequest() {
 
       const data = await response.json();
       if (response.ok) {
-        alert('✅ Help request sent successfully!');
-        setFormData({ ...formData, description: '' });  //clear description
+        setSuccessMessage('✅ Help request sent successfully!');
+        setFormData((prev) => ({ ...prev, description: '' }));
       } else {
-        alert(data.error || 'Something went wrong.');
+        setErrorMessage(data.error || 'Something went wrong.');
       }
     } catch (err) {
       console.error('Error submitting help request:', err);
-      alert('Server error.');
+      setErrorMessage('Server error.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -49,9 +63,22 @@ function HelpRequest() {
         <h2 className="text-3xl font-extrabold text-center text-white mb-6">
           🚨 Request Help
         </h2>
-        <p className="text-center text-white/80 mb-8">
+        <p className="text-center text-white/80 mb-6">
           Fill in the details below to request help from volunteers.
         </p>
+
+        {successMessage && (
+          <div className="mb-6 p-3 text-green-800 bg-green-100 rounded-lg text-center font-semibold animate__animated animate__fadeIn">
+            {successMessage}
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="mb-6 p-3 text-red-800 bg-red-100 rounded-lg text-center font-semibold animate__animated animate__fadeIn">
+            {errorMessage}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block mb-1 text-white font-semibold">Your Name</label>
@@ -83,9 +110,12 @@ function HelpRequest() {
           </div>
           <button
             type="submit"
-            className="w-full py-3 rounded-lg bg-gradient-to-r from-teal-400 to-blue-500 text-white text-lg font-bold transform transition-all duration-300 hover:scale-105 hover:from-teal-500 hover:to-blue-600 shadow-lg"
+            disabled={loading}
+            className={`w-full py-3 rounded-lg bg-gradient-to-r from-teal-400 to-blue-500 text-white text-lg font-bold transform transition-all duration-300 hover:scale-105 hover:from-teal-500 hover:to-blue-600 shadow-lg ${
+              loading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
           >
-            🚀 Send Help Request
+            {loading ? 'Sending...' : '🚀 Send Help Request'}
           </button>
         </form>
       </div>
@@ -94,3 +124,4 @@ function HelpRequest() {
 }
 
 export default HelpRequest;
+

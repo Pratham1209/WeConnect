@@ -1,84 +1,69 @@
-// const express = require('express');
-// const HelpRequest = require('../models/HelpRequest');
-// const User = require('../models/User');
-// const router = express.Router();
-
-// ✅ ✅ ✅ GET /api/help/volunteers (Moved OUTSIDE)
-// router.get('/volunteers', async (req, res) => {
-//   try {
-//     const volunteers = await User.find({ role: 'volunteer' }).select('name email'); // only send needed fields
-//     res.json(volunteers);
-//   } catch (err) {
-//     console.error('Error fetching volunteers:', err);
-//     res.status(500).json({ error: 'Server error.' });
-//   }
-// });
-
-// router.post('/helprequest', async (req, res) => {
-//   const { name, email, description } = req.body;
-
-//   if (!name || !email || !description) {
-//     return res.status(400).json({ error: 'All fields are required.' });
-//   }
-
-//   try {
-//     // 1️⃣ Find all volunteers
-//     const volunteers = await User.find({ role: 'volunteer' });
-
-//     if (volunteers.length === 0) {
-//       return res.status(200).json({ message: 'No volunteers available right now.' });
-//     }
-
-//     // 2️⃣ Send notification (for now just log, later email/real notif)
-//     volunteers.forEach((vol) => {
-//       console.log(`🔔 Notify: ${vol.name} (${vol.email}) - Help request from ${name}: ${description}`);
-//       // Here you'd integrate email service / push notification etc.
-//     });
-
-//     return res.status(200).json({ message: 'Help request sent to volunteers!' });
-//   } catch (err) {
-//     console.error('Error handling help request:', err);
-//     res.status(500).json({ error: 'Server error.' });
-//   }
-// });
-
-// module.exports = router;
 const express = require('express');
-const User = require('../models/User');
+const HelpRequest = require('../models/HelpRequest');
 
-module.exports = function(io) { // ⬅️ Export as a function with io
+const createHelpRequestRouter = (io) => {
   const router = express.Router();
 
+  // ✅ Create a new help request
   router.post('/helprequest', async (req, res) => {
     const { name, email, description } = req.body;
 
-    if (!name || !email || !description) {
-      return res.status(400).json({ error: 'All fields are required.' });
-    }
-
     try {
-      const volunteers = await User.find({ role: 'volunteer' });
+      const newRequest = new HelpRequest({ name, email, description });
+      await newRequest.save();
 
-      if (volunteers.length === 0) {
-        return res.status(200).json({ message: 'No volunteers available right now.' });
-      }
-
-      // ✅ Broadcast to all connected volunteers
-      io.emit('newHelpRequest', {
-        name,
-        email,
-        description,
-        time: new Date().toISOString()
-      });
-
-      console.log(`🔔 Sent real-time help request: ${name}: ${description}`);
-
-      return res.status(200).json({ message: 'Help request sent to volunteers!' });
+      io.emit('newHelpRequest', newRequest); // Notify volunteers
+      res.status(201).json(newRequest);
     } catch (err) {
-      console.error('Error handling help request:', err);
-      res.status(500).json({ error: 'Server error.' });
+      console.error(err);
+      res.status(500).json({ error: 'Error saving help request' });
     }
   });
 
-  return router;
+// ✅ Accept or Reject a help request
+router.post('/helprequest/:id/action', async (req, res) => {
+  const { action, volunteerName, volunteerId } = req.body;
+  const { id } = req.params;
+
+  try {
+    const helpRequest = await HelpRequest.findById(id);
+    if (!helpRequest) {
+      return res.status(404).json({ error: 'Help request not found' });
+    }
+
+    if (helpRequest.status !== 'pending') {
+      return res.status(400).json({ error: `Request already ${helpRequest.status}` });
+    }
+
+    if (action === 'accept') {
+      helpRequest.status = 'accepted';
+      helpRequest.acceptedBy = volunteerName || 'Unknown';
+      helpRequest.acceptedById = volunteerId || null;
+
+      // Emit to all clients (notify everyone that the request is accepted)
+      io.emit('updateHelpRequestStatus', helpRequest);
+    } else if (action === 'reject') {
+      helpRequest.status = 'pending';
+
+      // Emit only to the rejecting volunteer (to notify them)
+      io.to(volunteerId).emit('updateHelpRequestStatus', helpRequest);
+    } else if (action === 'pending') {
+      helpRequest.status = 'pending';
+    } else {
+      return res.status(400).json({ error: 'Invalid action' });
+    }
+
+    await helpRequest.save();
+
+    res.status(200).json(helpRequest);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error updating help request' });
+  }
+});
+
+return router;
 };
+
+module.exports = createHelpRequestRouter;
+
