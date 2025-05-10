@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import 'animate.css';
 
@@ -6,7 +7,9 @@ function HelpRequest() {
     name: '',
     email: '',
     description: '',
+    time: '',
   });
+  const [location, setLocation] = useState(null); // 💡 track location separately
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -14,11 +17,29 @@ function HelpRequest() {
   useEffect(() => {
     const loggedInUser = JSON.parse(localStorage.getItem('user'));
     if (loggedInUser) {
-      setFormData({
+      setFormData((prev) => ({
+        ...prev,
         name: loggedInUser.name || '',
         email: loggedInUser.email || '',
-        description: '',
-      });
+        time: new Date().toISOString(),
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
+    // 🌍 Fetch geolocation on load
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          setLocation({ type: 'Point', coordinates: [longitude, latitude] });
+        },
+        () => {
+          setErrorMessage('Failed to get your location.');
+        }
+      );
+    } else {
+      setErrorMessage('Geolocation is not supported by your browser.');
     }
   }, []);
 
@@ -32,14 +53,22 @@ function HelpRequest() {
       return;
     }
 
-    setLoading(true);
-    console.log('Sending help request:', formData);
+    if (!location) {
+      setErrorMessage('Location not available yet. Please try again.');
+      return;
+    }
 
+    const helpData = {
+      ...formData,
+      location,
+    };
+
+    setLoading(true);
     try {
       const response = await fetch('http://localhost:5000/api/help/helprequest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(helpData),
       });
 
       const data = await response.json();
@@ -60,9 +89,7 @@ function HelpRequest() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 p-6">
       <div className="w-full max-w-lg bg-white/30 backdrop-blur-lg rounded-xl shadow-2xl p-8 animate__animated animate__fadeIn">
-        <h2 className="text-3xl font-extrabold text-center text-white mb-6">
-          🚨 Request Help
-        </h2>
+        <h2 className="text-3xl font-extrabold text-center text-white mb-6">🚨 Request Help</h2>
         <p className="text-center text-white/80 mb-6">
           Fill in the details below to request help from volunteers.
         </p>
@@ -86,7 +113,7 @@ function HelpRequest() {
               type="text"
               value={formData.name}
               readOnly
-              className="w-full p-3 rounded-lg bg-white/60 text-gray-700 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 rounded-lg bg-white/60 text-gray-700 border border-gray-300"
             />
           </div>
           <div>
@@ -95,7 +122,7 @@ function HelpRequest() {
               type="email"
               value={formData.email}
               readOnly
-              className="w-full p-3 rounded-lg bg-white/60 text-gray-700 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 rounded-lg bg-white/60 text-gray-700 border border-gray-300"
             />
           </div>
           <div>
@@ -105,13 +132,13 @@ function HelpRequest() {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               required
-              className="w-full p-3 h-32 rounded-lg bg-white/60 text-gray-700 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full p-3 h-32 rounded-lg bg-white/60 text-gray-700 border border-gray-300 resize-none"
             ></textarea>
           </div>
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-3 rounded-lg bg-gradient-to-r from-teal-400 to-blue-500 text-white text-lg font-bold transform transition-all duration-300 hover:scale-105 hover:from-teal-500 hover:to-blue-600 shadow-lg ${
+            className={`w-full py-3 rounded-lg bg-gradient-to-r from-teal-400 to-blue-500 text-white text-lg font-bold transform transition-all duration-300 hover:scale-105 shadow-lg ${
               loading ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
@@ -124,4 +151,3 @@ function HelpRequest() {
 }
 
 export default HelpRequest;
-

@@ -1,3 +1,4 @@
+
 import { io } from 'socket.io-client';
 import React, { useState, useEffect } from 'react';
 
@@ -75,7 +76,6 @@ function VolunteerDashboard() {
           console.log('✅ Request updated:', data);
 
           if (action === 'accept') {
-            // Everyone should see it's accepted now
             setHelpRequests((prev) =>
               prev.map((req) =>
                 req._id === requestId
@@ -88,7 +88,6 @@ function VolunteerDashboard() {
               )
             );
           } else if (action === 'reject') {
-            // Only this volunteer sees rejected
             setHelpRequests((prev) =>
               prev.map((req) =>
                 req._id === requestId
@@ -106,6 +105,35 @@ function VolunteerDashboard() {
         alert('Error processing the action. Please try again.');
       });
   };
+
+  // Haversine formula to calculate distance
+  function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radius of the Earth in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    
+    // Log the differences in latitude and longitude
+    console.log('🗺️ Latitude and Longitude of Volunteer:', lat1, lon1);
+    console.log('🗺️ Latitude and Longitude of Request:', lat2, lon2);
+    console.log('🗺️ Difference in Latitude (radians):', dLat);
+    console.log('🗺️ Difference in Longitude (radians):', dLon);
+    
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    
+    // Log intermediate values
+    console.log('🔢 Haversine value (a):', a);
+    console.log('🔢 Central angle (c):', c);
+    
+    const distance = R * c;
+    console.log('📏 Calculated Distance (km):', distance); // Log final distance
+    return distance;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-400 to-blue-500 flex flex-col items-center justify-center text-white p-4">
@@ -139,8 +167,17 @@ function VolunteerDashboard() {
             ) : (
               <ul className="space-y-4">
                 {helpRequests.map((req) => {
-                  // Skip showing if rejected by this volunteer
                   if (req.rejectedByThisVolunteer) return null;
+
+                  const isNearby =
+                    volunteer?.location && req?.location
+                      ? getDistanceFromLatLonInKm(
+                          volunteer.location.coordinates[1],
+                          volunteer.location.coordinates[0],
+                          req.location.coordinates[1],
+                          req.location.coordinates[0]
+                        ) <= 5
+                      : false;
 
                   return (
                     <li
@@ -150,14 +187,36 @@ function VolunteerDashboard() {
                       <p>
                         <strong>From:</strong> {req.name} ({req.email})
                       </p>
-                      <p>
+                      {/* <p>
                         <strong>Description:</strong> {req.description}
-                      </p>
+                      </p> */}
+                      <p>
+  <strong>Description:</strong> {req.description}
+</p>
+
+{req?.location?.coordinates && (
+  <p className="mt-2">
+    <a
+      href={`https://www.google.com/maps?q=${req.location.coordinates[1]},${req.location.coordinates[0]}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-blue-600 underline"
+    >
+      🗺️ Navigate to Location on Google Maps
+    </a>
+  </p>
+)}
+
                       <p className="text-sm text-gray-500">
                         ⏰{' '}
                         {req.time
                           ? new Date(req.time).toLocaleString()
                           : 'No timestamp'}
+                      </p>
+                      <p className="text-blue-500 font-semibold">
+                        {isNearby
+                          ? '📍 This request is within 5 km of your location'
+                          : '📍 This request is more than 5 km away'}
                       </p>
 
                       <p className="mt-2">
@@ -171,7 +230,6 @@ function VolunteerDashboard() {
                         )}
                       </p>
 
-                      {/* Only show buttons if still pending */}
                       {req.status === 'pending' && (
                         <div className="mt-4 flex space-x-4">
                           <button

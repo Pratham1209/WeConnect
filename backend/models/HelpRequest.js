@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
 
+const mongoose = require('mongoose');
 const HelpRequestSchema = new mongoose.Schema({
   name: String,
   email: String,
@@ -11,6 +11,17 @@ const HelpRequestSchema = new mongoose.Schema({
   },
   acceptedBy: String,
   acceptedById: String,
+  location: {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number], required: true }, // [longitude, latitude]
+  },
+  time: {
+    type: Date,
+    default: Date.now,
+  },
 }, { timestamps: true });
 
+HelpRequestSchema.index({ location: '2dsphere' }); // 👈 Enable geospatial queries
+
 module.exports = mongoose.model('HelpRequest', HelpRequestSchema);
+

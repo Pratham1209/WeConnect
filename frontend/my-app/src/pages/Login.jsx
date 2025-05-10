@@ -4,41 +4,50 @@ import 'animate.css';
 function Login() {
   const [credentials, setCredentials] = useState({ email: '', password: '' });
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    console.log('Logging in with:', credentials);
 
-    try {
-        const response = await fetch('http://localhost:5000/api/auth/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(credentials),
-        });
+const handleLogin = async (e) => {
+  e.preventDefault();
+  console.log('Logging in with:', credentials);
 
-        const data = await response.json();
+  try {
+    // Step 1: Get geolocation
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const { latitude, longitude } = position.coords;
 
-        if (response.status === 200) {
-          alert('✅ Login successful!');
-          console.log('Logged in user:', data.user);
-          localStorage.setItem('user', JSON.stringify(data.user));
-      
-          // Check the role and redirect accordingly
-          if (data.user.role === 'volunteer') {
-              window.location.href = '/volunteer-dashboard';  // Volunteer route
-          } else {
-              window.location.href = '/helprequest';  // Regular user route
-          }
+      // Step 2: Send login request with coordinates
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ...credentials, location: { latitude, longitude } }),
+      });
+
+      const data = await response.json();
+
+      if (response.status === 200) {
+        alert('✅ Login successful!');
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        // Step 3: Redirect based on role
+        if (data.user.role === 'volunteer') {
+          window.location.href = '/volunteer-dashboard';
+        } else {
+          window.location.href = '/helprequest';
+        }
       } else {
-          alert(`❌ Login failed: ${data.error}`);
+        alert(`❌ Login failed: ${data.error}`);
       }
-      
-    } catch (err) {
-        console.error('Error:', err);
-        alert('An error occurred. Please try again.');
-    }
+    }, (err) => {
+      alert('Location access denied. Please allow location access for volunteers.');
+    });
+
+  } catch (err) {
+    console.error('Error:', err);
+    alert('An error occurred. Please try again.');
+  }
 };
+
 
   return (
     <div className="h-screen bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 flex items-center justify-center">
