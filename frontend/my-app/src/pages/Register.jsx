@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import { toast } from 'react-toastify'; 
 
 function Register() {
   const [user, setUser] = useState({ name: '', email: '', password: '' });
@@ -18,21 +18,25 @@ function Register() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ...user, role }), // ✅ Send role to backend too
+        body: JSON.stringify({ ...user, role }), //  Send role to backend too
       });
   
       const data = await response.json();
   
       if (response.status === 201) {
-        alert(`✅ Successfully registered as ${role}! Redirecting to login...`);
-        navigate('/login'); //  Redirect after success
-      } else {
-        alert(`❌ Error: ${data.error}`);
-      }
-    } catch (err) {
-      console.log('Error:', err);
-      alert('An error occurred. Please try again.');
+  toast.success(`Successfully registered as ${role}! Redirecting to login...`, {
+    autoClose: 2000,
+    onClose: () => {
+      navigate('/login'); 
     }
+  });
+} else {
+  toast.error(`Error: ${data.error}`, { autoClose: 3000 });
+}
+} catch {
+  toast.error('An error occurred. Please try again.', { autoClose: 3000 });
+}
+
   };
   
 
@@ -87,7 +91,7 @@ function Register() {
           />
         </div>
 
-        {/* Email Input */}
+       
         <div className="mb-4">
           <label className="block text-gray-600 mb-2" htmlFor="email">
             Email
@@ -103,7 +107,7 @@ function Register() {
           />
         </div>
 
-        {/* Password Input */}
+      
         <div className="mb-6">
           <label className="block text-gray-600 mb-2" htmlFor="password">
             Password
@@ -119,7 +123,7 @@ function Register() {
           />
         </div>
 
-        {/* Submit Button */}
+        
         <button
           type="submit"
           className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-3 rounded-lg text-lg font-semibold hover:bg-gradient-to-r hover:from-blue-600 hover:to-indigo-600 transition-all duration-300 transform hover:scale-105"
