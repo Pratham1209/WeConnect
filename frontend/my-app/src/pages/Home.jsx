@@ -1,6 +1,4 @@
-
-
-  //  src="https://www.iconpacks.net/icons/2/free-handshake-icon-3312-thumb.png"
+ //  src="https://www.iconpacks.net/icons/2/free-handshake-icon-3312-thumb.png"
 import React, {useRef, useState, useEffect } from 'react';
 import 'animate.css';
 import { Link } from 'react-router-dom';
