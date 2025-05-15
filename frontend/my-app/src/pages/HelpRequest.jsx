@@ -1,6 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import 'animate.css';
+
+const socket = io('http://localhost:5000'); // Connect to backend
 
 function HelpRequest() {
   const [formData, setFormData] = useState({
@@ -9,11 +11,15 @@ function HelpRequest() {
     description: '',
     time: '',
   });
-  const [location, setLocation] = useState(null); // 💡 track location separately
+
+  const [location, setLocation] = useState(null);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');4
+  const [notificationMessage, setNotificationMessage] = useState('');
 
+
+  // ✅ Step 3: Register user on socket connect
   useEffect(() => {
     const loggedInUser = JSON.parse(localStorage.getItem('user'));
     if (loggedInUser) {
@@ -23,11 +29,26 @@ function HelpRequest() {
         email: loggedInUser.email || '',
         time: new Date().toISOString(),
       }));
+
+      socket.emit('registerUser', loggedInUser.email); // 🔔 Register user socket
     }
   }, []);
 
+  // ✅ Step 2: Listen for real-time notifications
   useEffect(() => {
-    // 🌍 Fetch geolocation on load
+  socket.on('notifyUser', (message) => {
+    setNotificationMessage(message);
+    setTimeout(() => setNotificationMessage(''), 12000) // Auto-hide
+  });
+
+  return () => {
+    socket.off('notifyUser');
+  };
+}, []);
+
+
+  // ✅ Step 4: Get user's geolocation
+  useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -88,8 +109,16 @@ function HelpRequest() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 p-6">
+   {notificationMessage && (
+  <div className="fixed top-6 right-6 max-w-sm w-fit bg-yellow-100 text-yellow-800 px-6 py-3 rounded-lg shadow-lg z-50 animate__animated animate__fadeInRight break-words">
+    {notificationMessage}
+  </div>
+)}
+
+
       <div className="w-full max-w-lg bg-white/30 backdrop-blur-lg rounded-xl shadow-2xl p-8 animate__animated animate__fadeIn">
         <h2 className="text-3xl font-extrabold text-center text-white mb-6">🚨 Request Help</h2>
+        
         <p className="text-center text-white/80 mb-6">
           Fill in the details below to request help from volunteers.
         </p>
