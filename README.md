@@ -103,7 +103,8 @@ Pull requests are welcome! If you want to contribute:
 
 ## 🤝 Author & Maintainer
 
-- 👨‍💻 [@Pratham1209](https://github.com/Pratham1209)
+- 👨‍💻 [@Pratham](https://github.com/Pratham1209)
+- 👨‍💻 [@[Maitreyee](https://github.com/Maitreyee-D)
 
 ---
 > 💡 _"Together, we connect. Together, we help."_ — **WeConnect**
