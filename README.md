@@ -104,7 +104,7 @@ Pull requests are welcome! If you want to contribute:
 ## 🤝 Author & Maintainer
 
 - 👨‍💻 [@Pratham](https://github.com/Pratham1209)
-- 👨‍💻 [@[Maitreyee](https://github.com/Maitreyee-D)
+- 👨‍💻 [@Maitreyee](https://github.com/Maitreyee-D)
 
 ---
 > 💡 _"Together, we connect. Together, we help."_ — **WeConnect**
